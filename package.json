@@ -1,6 +1,6 @@
 {
     "name": "core.plugin.type",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "description": "defines types using a schema",
     "main": "index.js",
     "scripts": {
