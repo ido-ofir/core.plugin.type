@@ -36,6 +36,7 @@ module.exports = {
       input: 'select',
       options: [
         'text',
+        'textarea',
         'select',
         'number',
         'checkbox',
@@ -63,8 +64,6 @@ module.exports = {
     }
   ],
   build(schema){
-    
-
     return schema;
   }
 };

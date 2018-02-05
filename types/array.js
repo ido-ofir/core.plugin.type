@@ -1,23 +1,29 @@
 module.exports = {
   name: 'array',
-  recursive: true,
-  schema: {
-    ofType: {
-      $_type: 'string',
-      ofType: 'type'
+  identifier: 'name',
+  schema: [
+    {
+      key: 'name',
+      type: 'string',
+      description: 'a unique name for this array'
     },
-    description: {
-      $_type: 'string',
-      items: []
+    {
+      key: 'description',
+      type: 'string',
+      description: 'describes the purpose of this array'
     },
-    items: {
-      $_type: 'array',
-      items: []
+    {
+      key: 'ofType',
+      type: 'string',
+      description: 'the type of the items in this array'
+    },
+    {
+      key: 'items',
+      type: 'array',
+      description: 'the items in the array'
     }
-  },
+  ],
   build(def){
-    if(!def) return this.Array();
-    var items = this.isArray(def) ? def : (def.items || []);
-    return this.Array(items);
+    return def.items;
   }
 };

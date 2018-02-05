@@ -31,23 +31,30 @@ function Select(name){
 
 module.exports = {
   name: 'plugin',
-  recursive(def){
-    return def && !!def.recursive;
-  },
-  schema: {
-    name: {
-      $_type: 'string',
-      value: ''
+  identifier: 'name',
+  schema: [
+    {
+      key: 'name',
+      type: 'string',
+      description: 'a unique name for this plugin'
     },
-    dependencies: {
-      $_type: 'array',
-      items: []
+    {
+      key: 'description',
+      type: 'string',
+      description: 'describes the purpose of this plugin'
+    },
+    {
+      key: 'extend',
+      type: 'object',
+      description: 'extend the core object with your own properties'
+    },
+    {
+      key: 'init',
+      type: 'function',
+      description: 'initialize the plugin'
     }
-  },
+  ],
   build(definition){
-    if(!definition) throw new Error('Empty plugin definition');
-    var { name, dependencies } = definition;
-    if(!name) throw new Error('Plugin must have a name');
     return this.plugin(definition);
   }
 };

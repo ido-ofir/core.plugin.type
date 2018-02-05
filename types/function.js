@@ -1,20 +1,26 @@
 module.exports = {
   name: 'function',
-  schema: {
-    compiled: {
+  identifier: 'name',
+  schema: [
+    {
+      key: 'name',
       type: 'string',
+      description: 'a unique name for this function'
     },
-    source: {
-      type: 'string'
+    {
+      key: 'description',
+      type: 'string',
+      description: 'describes the purpose of this function'
     },
-    value: {
-      type: 'function'
+    {
+      key: 'code',
+      type: 'string',
+      description: 'the javascript code that makes the function'
     }
-  },
+  ],
   build(target, path){
-    if(target.value) return target.value;
-    var compiled = target.compiled;
-    if(!compiled) throw new Error(`cannot find compiled code in function ${this.name}.${path.join('.')}`);
-    return eval(compiled);
+    var code = target.code;
+    if(!code) throw new Error(`cannot find compiled code in function ${this.name}.${path.join('.')}`);
+    return eval(code);
   }
 };

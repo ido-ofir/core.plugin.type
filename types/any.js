@@ -1,16 +1,27 @@
 module.exports = {
   name: 'any',
-  schema: {
-    value: 'any'
-  },
+  identifier: 'name',
+  schema: [
+    {
+      key: 'name',
+      type: 'string',
+      description: 'a unique name for this property'
+    },
+    {
+      key: 'description',
+      type: 'string',
+      description: 'describes the meaning of this property'
+    },
+    {
+      key: 'value',
+      type: 'string',
+      description: 'the javascript code of this property'
+    }
+  ],
   validate(){
     return true;
   },
   build(def){
-    if(!def) return def;
-    if(def['$_type'] === 'any'){
-      return def.value;
-    }
-    return def;
+    return eval(def.value);
   }
 };

@@ -1,48 +1,35 @@
 module.exports = {
   name: 'type',
-  recursive: false,
+  identifier: 'name',
+  instances: {},
   schema: [
-    {
-      key: '$_type',
-      type: 'string',
-      description: 'The name of the type.',
-      required: true
-    },
     {
       key: 'name',
       type: 'string',
       description: 'The name of the type.',
-      required: true
+      isRequired: true
     },{
-      key: 'recursive',
-      type: 'boolean',
-      description: `Set to false if you don't want to automatically build the children of your type's instance definition.`,
-      value: true
+      key: 'identifier',
+      type: 'string',
+      description: 'The key used to identify instances of this type',
+      defaultValue: 'id'
     },{
       key: 'schema',
       type: 'array',
+      content: { type: 'schemaItem' },
       description: 'A schema that defines the interface of this type',
-      items: []
-    },{
-      key: 'preBuild',
-      type: 'function',
-      description: `Will run before any of the children have been built. expected to return a new source. if 'recursive' if set to false this function will not run.`,
+      defaultValue: []
     },{
       key: 'build',
       type: 'function',
-      description: `If 'recursive' if set to true - will run after all of the children have been built. if 'recursive' if set to false this function will be envoked with the source.`,
-      required: true
-    },{
-      key: 'postBuild',
-      type: 'function',
-      description: `Will run after any of the children have been built. expected to return a new source. if 'recursive' if set to false this function will not run.`,
-      required: true
+      description: `An async constructor for this type`,
     }
   ],
-  build(definition){
+  build(definition, done){
     var core = this;
     var type = definition;
+    type.instances = {};
     core.types[definition.name] = type;
-    return type;
+    done(type);
   }
 };
