@@ -21,7 +21,10 @@ module.exports = {
   validate(value, core){
     return core.isBoolean(value);
   },
-  build(def){
-    return Boolean(def && def.value);
+  build(def, done){
+    done(Boolean(def && def.value));
+  },
+  getDefaultValue(){
+    return true;
   }
 };

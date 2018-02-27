@@ -13,17 +13,15 @@ module.exports = {
       description: 'describes the purpose of this array'
     },
     {
-      key: 'ofType',
-      type: 'string',
-      description: 'the type of the items in this array'
-    },
-    {
       key: 'items',
       type: 'array',
       description: 'the items in the array'
     }
   ],
-  build(def){
-    return def.items;
+  build(def, done){
+    done(def.items);
+  },
+  getDefaultValue(){
+    return [];
   }
 };

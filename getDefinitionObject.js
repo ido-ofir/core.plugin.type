@@ -8,7 +8,7 @@
  * @param {function} get - function to initialize the module when dependencies are met. 
  * @param {string} type - a string defining the type that is being instanciated. 
  * @param {function} done - a callback function for when this module has finished instanciation. 
- * @return {object} the instance definition object will have the fields { name, dependencies, get, $_type, done }. 
+ * @return {object} the instance definition object will have the fields { name, dependencies, get, core.type, done }. 
  * @example
  *   
  * 
@@ -36,8 +36,10 @@ function getDefinitionObject(name, dependencies, get, type, done) {
         
       }
     }
-    definition.$_type = type || 'unknown';
-    definition.done = definition.done || done;
+    definition['core.type'] = type || 'unknown';
+    if(definition.done || done){
+      definition.done = definition.done || done;
+    }
     return definition;
   }
 

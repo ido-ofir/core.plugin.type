@@ -11,5 +11,8 @@ module.exports = {
   },
   build(def){
     return def;
+  },
+  getDefaultValue(){
+    return { type: 'string', value: '' };
   }
 };

@@ -31,9 +31,9 @@ module.exports = {
       description: 'initial value for this property',
       defaultValue: null
     },{
-      key: 'content',
+      key: 'params',
       type: 'object',
-      description: 'a custom data object per type',
+      description: 'a parameters data object for the selected type',
       defaultValue: null
     }
   ],

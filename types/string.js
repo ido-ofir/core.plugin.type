@@ -23,5 +23,8 @@ module.exports = {
   },
   build(def){
     return String(def && def.value);
+  },
+  getDefaultValue(core){
+    return '';
   }
 };

@@ -1,3 +1,6 @@
+
+function noop(){}
+
 module.exports = {
   name: 'function',
   identifier: 'name',
@@ -18,9 +21,12 @@ module.exports = {
       description: 'the javascript code that makes the function'
     }
   ],
-  build(target, path){
-    var code = target.code;
-    if(!code) throw new Error(`cannot find compiled code in function ${this.name}.${path.join('.')}`);
-    return eval(code);
+  build(def, done){
+    var code = def.code;
+    if(!code) throw new Error(`cannot find compiled code in function '${def.name}'}`);
+    done(eval(code));
+  },
+  getDefaultValue(){
+    return noop;
   }
 };

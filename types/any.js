@@ -21,7 +21,10 @@ module.exports = {
   validate(){
     return true;
   },
-  build(def){
-    return eval(def.value);
+  build(def, done){
+    done(eval(def.value));
+  },
+  getDefaultValue(){
+    return true;
   }
 };

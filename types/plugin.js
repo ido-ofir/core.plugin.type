@@ -56,5 +56,8 @@ module.exports = {
   ],
   build(definition){
     return this.plugin(definition);
+  },
+  getDefaultValue(){
+    return {};
   }
 };

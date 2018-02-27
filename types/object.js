@@ -25,5 +25,8 @@ module.exports = {
   ],
   build(object, done){
     done(object.properties);
+  },
+  getDefaultValue(){
+    return {};
   }
 };

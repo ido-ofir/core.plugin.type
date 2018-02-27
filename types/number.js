@@ -23,5 +23,8 @@ module.exports = {
   },
   build(def){
     return Number(def && def.value);
+  },
+  getDefaultValue(){
+    return 1;
   }
 };
