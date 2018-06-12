@@ -16,7 +16,8 @@
  * */
 
 function getDefinitionObject(name, dependencies, get, type, done) {
-    if (!name) throw new Error(`${type} must have a name`);
+    var meta = (typeof type === 'string') ? { type: type } : type;
+    if (!name) throw new Error(`${meta.type} must have a name`);
     var definition;
     if (this.isObject(name)) {
       definition = name;
@@ -36,7 +37,6 @@ function getDefinitionObject(name, dependencies, get, type, done) {
         
       }
     }
-    definition['core.type'] = type || 'unknown';
     if(definition.done || done){
       definition.done = definition.done || done;
     }

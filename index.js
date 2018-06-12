@@ -9,14 +9,22 @@ var types = [
     require('./types/number.js'),
     require('./types/string.js'),
     require('./types/array.js'),
-    require('./types/typedArray.js'),
     require('./types/object.js'),
+    require('./types/object.properties.js'),
+    require('./types/object.property.js'),
+    require('./types/object.property.type.js'),
     require('./types/function.js'),
+    require('./types/ref.js'),
+    require('./types/ref.identifier.js'),
+    require('./types/ref.type.js'),
+    require('./types/text.js'),
+    require('./types/list.js'),
     require('./types/schema.js'),
     require('./types/schemaItem.js'),
-    require('./types/keyValue.js'),
+    require('./types/schemaKey.js'),
     require('./types/plugin.js'),
     require('./types/source.js'),
+    require('./types/value.js'),
 ];
 
 module.exports = {
@@ -29,129 +37,211 @@ module.exports = {
         type = type(core);
 
         var extend = {
-            nativeTypes: {
-                undefined(v){ return core.isUndefined(v); },
-                null(v){ return core.isNull(v); },
-                boolean(v){ return core.isBoolean(v); },
-                string(v){ return core.isString(v); },
-                number(v){ return core.isNumber(v); },
-                array(v){ return core.isArray(v); },
-                object(v){ return core.isObject(v); },
-                function(v){ return core.isFunction(v); },
-                any(v){ return true; }
+            type: {
+                findInSource(source, sourceElementId){
+                    var m, t, id, type = core.typeOf(source);
+                    if(type === 'object'){
+                        for(m in source){
+                            id = core.type.getId(source[m]);
+                            t = (id && (id === sourceElementId)) ? 
+                                source[m] :
+                                core.type.findInSource(source[m], sourceElementId)
+                            if(t){ return t; }
+                        }
+                    }
+                    else if(type === 'array'){
+                        return source.find(item => core.type.findInSource(item, sourceElementId));
+                    }
+                },
+                createSource(meta, types){
+                    if(core.isString(meta)){
+                        meta = { type: meta };
+                    }
+                    if(!meta.id){ meta.id = core.uuid(); }
+                    return core.type.toSource(meta, meta.value || core.getDefaultValue(meta.type, types));
+                },
+                toSource(meta, value){
+                    return {
+                        "core.source.element": { meta, value }
+                    };
+                },
+                parseSource(source){
+                    return source && source["core.source.element"];
+                },
+                isSourceElement(source){
+                    return !!source['core.source.element'];
+                },
+                getId(){
+                    var element = source['core.source.element'];
+                    return element && element.meta && element.meta.id;
+                },
+                getDefaultValue(typeName, types){
+                    types = types || core.types;
+                    let type = types[typeName];
+                    if(!type){
+                        throw new Error(`cannot find type '${ typeName }'`);
+                    }
+                    if(type.getDefaultValue){ return type.getDefaultValue(); }
+                    if('defaultValue' in type){ return type.defaultValue; }
+                    var schema = this.getSchema(typeName, types);
+                    if(schema.length){
+                        var value = {};
+                        schema.map(item => {
+                            var itemValue;
+                            if('defaultValue' in item) { itemValue = item.defaultValue; }
+                            else { itemValue = core.getDefaultValue(item.type); };
+                            value[item.key] = itemValue;
+                        });
+                        return value;
+                    }
+                    return null;
+                }
             },
             types: {},
             Type(name, dependencies, get){
-                var definition = this.getDefinitionObject(name, dependencies, get, 'type');    
-                return this.build(definition);
+                var definition = this.getDefinitionObject(name, dependencies, get, 'type');
+                // return this.build(definition);
+                var source = core.type.toSource({
+                    id: definition.name,
+                    key: definition.name,
+                    type: 'type',
+                    description: definition.description || ''
+                }, definition)
+                return this.build(source, definition.done);
             },
             getDefinitionObject: getDefinitionObject,
+            buildObject(object, done){
+                var result = {};
+                var keys = Object.keys(object);
+                var count = keys.length;
+                if(!count){ return done && done(result); }
+                keys.map((key) => {
+                    var item = object[key];
+                    core.build(item, (built) => {
+                        count -= 1;
+                        result[key] = built;
+                        if(!count){ done && done(result); }
+                    });
+                });
+            },
+            buildArray(array, done){
+                var result = [];
+                var count = array.length;
+                if(!count){ return done && done(result); }
+                array.map((item, i) => {
+                    core.build(item, (built) => {
+                        count -= 1;
+                        result[i] = built;
+                        if(!count){ done && done(result); }
+                    });
+                });
+            },
+            buildType(typeName, source, done){
+                var parent = null;
+                var type = core.types[typeName];
+
+                if (!type) throw new Error(`cannot find type '${typeName}'`);
+                var id = source[type.identifier];
+
+                function finish(value, cb){
+                    if(id){
+                        type.instance(id, value);
+                    }
+                    if(core.isFunction(cb)){ cb(value); }
+                    if(core.isFunction(done)){ done(value); }
+                }
+                if(type.build){
+                    return type.build.call(core, source, finish);
+                }
+                // if this type does not have a 'build' function - look for a build function in ancestors
+                if(type.extends){
+                    parent = core.types[type.extends];
+                    while(parent && !parent.build){
+                        parent = core.types[parent.extends];
+                    }
+                    if(parent){
+                        return core.buildType(parent.name, source, finish)
+                    }
+                }
+
+                return finish(source);
+            },
+            buildSourceElement(source, done){
+                var { value, meta } = core.type.parseSource(source);
+                var type = core.types[meta.type];
+                var typeToBuild = type;
+                
+                if (!type) throw new Error(`cannot find type '${meta.type}'`);
+
+                function finish(value, cb){
+                    type.instance(meta, value);
+                    if(core.isFunction(cb)){ cb(value); }
+                    if(core.isFunction(done)){ done(value); }
+                }
+
+                while(typeToBuild && !typeToBuild.build){
+                    typeToBuild = core.types[typeToBuild.extends];
+                }
+
+                if(!typeToBuild){ return finish(value); }
+                
+                return typeToBuild.build.call(core, value, finish);
+            },
             build(source, done) {
 
+                if (!source) { return done(source); }
+                
                 var core = this;
-    
-                if (!source) { return source; }
-    
-                var result, typeName = source['core.type'];
-    
-                if (!typeName) {
-                    var count = 0;
-                    if(core.isArray(source)){
-                        result = [];
-                        return source.map((t, i) => {
-                            count += 1;
-                            core.build(t, (build) => {
-                                result[i] = build;
-                                count -= 1;
-                                if(!count){ done && done(result); }
-                            });
-                        });
-                    }
-                    if(core.isObject(source)){
-                        result = {};
-                        Object.keys(source).map((key) => {
-                            count += 1;
-                            core.build(source[key], (build) => {
-                                count -= 1;
-                                result[key] = build;
-                                if(!count){ done && done(result); }
-                            });
-                        });
-                    }
-                    else{
-                        done && done(source);
-                    }
+
+                if(core.type.isSourceElement(source)) {
+                    return core.buildSourceElement(source, done);
+                }
+                if(core.isArray(source)){
+                    return core.buildArray(source, done);
+                }
+                if(core.isObject(source)){
+                    return core.buildObject(source, done);
                 }
 
-                else{
-                    var parent = null;
-                    var type = core.types[typeName];
-                    var id = source[type.identifier];
-                    var result = source;
-
-                    if (!type) throw new Error(`cannot find type '${typeName}'`);
-                    if(!type.build){ 
-                        if(id){
-                            type.instance(id, source);
-                        }
-                        return source;
-                    }
-        
-                    if(type.extends){
-                        parent = core.types[type.extends];
-                        if(!parent){
-                            throw new Error(`cannot find type '${type.extends}', '${ typeName }' tries to extend it.`);
-                        }
-                    }
-                    return type.build.call(core, result, function(built){
-                        var id = source[type.identifier];
-                        if(id){
-                            type.instance(id, built);
-                        }
-                        done && done(built);
-                    }, done);
-                }
-    
+                done && done(source);
             },
-            instance(typeName, id, value){
-                var args = core.isObject(arguments[0]) ? arguments[0] : { type: typeName, id, value };
-                var type = core.types[args.type];
-                if(!type){
-                    return console.warn(`cannot find type '${ args.type }'`);
-                }
-                return type.instance(args.id, args.value);
-            },
-            getSchema(typeName){
-                var type = core.types[typeName];
-                if(!type){
-                    throw new Error(`cannot find type '${ typeName }'`);
-                }
-                var schema = type.schema;
+            getSchema(typeName, types){
+                types = types || core.types;
+                let type = types[typeName];
+                let schema = type.schema ? type.schema.concat([]) : [];
                 if(type.extends){
-                    schema = core.getSchema(type.extends).concat(schema);
+                    core.getSchema(type.extends, types).map((schemaItem) => {
+                        for(let i = 0; i < schema.length; i++){
+                            if(schema[i].key === schemaItem.key){ return; }
+                        }
+                        schema.push(schemaItem);
+                    });
                 }
                 return schema;
             },
-            create(typeName){
-                var result = {}
-                var type = core.types[typeName];
+            getDefaultValue(typeName, types){
+                types = types || core.types;
+                let type = types[typeName];
                 if(!type){
                     throw new Error(`cannot find type '${ typeName }'`);
                 }
-                if(type.extends){
-                    result = core.create(type.extends);
+                if(type.getDefaultValue){ return type.getDefaultValue(); }
+                if('defaultValue' in type){ return type.defaultValue; }
+                var schema = this.getSchema(typeName, types);
+                if(schema.length){
+                    var value = {};
+                    schema.map(item => {
+                        var itemValue;
+                        if('defaultValue' in item) { itemValue = item.defaultValue; }
+                        else { itemValue = core.getDefaultValue(item.type); };
+                        value[item.key] = itemValue;
+                    });
+                    return value;
                 }
-                result['core.type'] = typeName;
-                type.schema.map(item => {
-                    var itemType = core.types[item.type];
-                    if(itemType.getDefaultValue){
-                        result[item.key] = itemType.getDefaultValue();
-                    }
-                    else{
-                        result[item.key] = core.create(item.type);
-                    }
-                });
-                return result;
+                return null;
+            },
+            createSource(meta, types){
+                return core.type.createSource(meta, types);
             }
         };
 

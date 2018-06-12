@@ -1,17 +1,12 @@
 module.exports = {
-  name: 'object',
+  name: 'object.properties',
+  extends: 'array',
   schema: [
     {
       key: 'ofType',
       type: 'ref.type',
-      description: 'the type of the properties of this object',
-      defaultValue: ''
-    },
-    {
-      key: 'properties',
-      type: 'schema',
-      description: 'the properties of the object',
-      defaultValue: []
+      description: '"object.properties" is an array of "object.property" items',
+      defaultValue: 'object.property'
     }
   ],
   build(object, done){

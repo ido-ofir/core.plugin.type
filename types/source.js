@@ -7,28 +7,23 @@ module.exports = {
             key: 'id',
             description: 'a unique id for this source object',
             type: 'string',
-            isRequired: true
+            isRequired: true,
+            defaultValue: ''
         },
         {
-            key: 'types',
-            description: 'an array of types. types will be executed before instances',
+            key: 'items',
+            description: 'an array of items to build.',
             type: 'array',
-            params: { ofType: 'type' }
-        },
-        {
-            key: 'instances',
-            description: 'an array of instances',
-            type: 'array'
+            defaultValue: []
         }
     ],
     build(def, done){
 
         let core = this;
 
-        core.build(def.types, () => {
-            core.build(def.instances, () => {
-                done(def);
-            });
+        core.buildObject(def, (built) => {
+            console.log('def', def);
+            done(def);
         });
 
     }

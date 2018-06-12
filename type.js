@@ -3,7 +3,41 @@
 
 module.exports = function(core){
 
+  function getValue(target, path){
+    if(!target || !path || !path.length){ return target; }
+    return getValue( target[path[0]], path.filter((t,i) => i) );
+  }
 
+  // immutably set [path] on [source] to [value].
+  // if [value] is different then the current value a new object is returned
+  // and all the sub objects or arrays that contained the change are cloned as well.
+  // if [value] was not changed [source] is returned.
+  function immutableSet(source, path, value){
+    var result = Array.isArray(source) ? [].concat(source) : Object.assign({}, source);
+    var target = result;
+    var property = path.pop();
+    path.map((t, i) => {
+      target[t] = Array.isArray(target[t]) ? [].concat(target[t]) : Object.assign({}, target[t]);
+      target = target[t];
+    });
+    if(target[property] === value){ // if nothing changed return the source
+      return source;
+    }
+    target[property] = value;
+    return result;
+  }
+
+  function setValue(target, path, value){
+    if(!path || !path.length){ return value; }
+    var v = immutableSet(target, [].concat(path), value);
+    return v;
+    // if(!target || !path || !path.length){ return value; }
+    // if(path.length === 1){
+    //   target[path[0]] = value;
+    //   return target;
+    // }
+    // return setValue( target[path[0]], path.filter((t,i) => i) );
+  }
 
   function Watcher(instance, onChange){
     this.instance = instance;
@@ -21,23 +55,123 @@ module.exports = function(core){
     }
   };
 
-  function Instance(type, id, value){
+  function Instance(type, meta, value){
     this.type = type;
-    this.id = id;
-    this.value = value;
+    if(!core.isObject(meta)){ meta = { id: meta }; }
+    this.meta = meta;
+    this.id = meta.id;
+    this._value = value;
     this._watchers = []; 
-    core.Emitter(this);           
+    this._events = {}; 
   }
 
-  Instance.prototype = {
-    get(){
-        return this.value;
+  Instance.prototype = core.Emitter({
+    setMeta(meta){
+      this.meta = Object.assign({}, this.meta, meta);
+      this._runWatchers();
+      this._emitChange();
     },
-    set(value){
-        this.value = value;
-        this._watchers.map(watcher => watcher.onChange(value));
-        this.emit('change', this);
+    _emitChange(){
+      this.emit('change', this);
+      this.type.emit('instance.change', this);
+    },
+    _runWatchers(){
+      this._watchers.map(watcher => watcher.onChange(this._value));
+    },
+    _set(path, value, cb){
+        var prev = this._value;
+        this._value = setValue(this._value, path, value);
+        if(prev !== this._value){
+          this.previousValue = prev;
+          this._runWatchers();
+          cb && cb(this._value);
+          this._emitChange();
+        }
         return this;
+    },
+    get(path){
+        if(core.isString(path)){ path = [path]; }
+        return getValue(this._value, path);
+    },
+    
+    set(path, value){
+      if(arguments.length < 2){
+        value = path;
+        path = [];
+      }
+      this._set(path, value, () => {
+        this.type.emit('update', {
+          instanceId: this.id,
+          type: 'set', 
+          value: value,
+          path: path
+        }); 
+      });
+    },
+    unset(path){
+        if(!path || !path.length){ return this.set(); }
+        var key = path[path.length - 1];
+        var path = path.slice(0, path.length - 1);
+        var value = this.get(path);
+        if(!value){ return; }
+        var type = core.typeOf(value);
+        if(type === 'array'){
+          value = value.filter((t, i) => i !== key);
+        }
+        else if(type === 'object'){
+          value = Object.assign({}, value);
+          delete value[key];
+        }
+        this._set(path, value, () => {
+          this.type.emit('update', { 
+            type: 'unset', 
+            path: path,
+            instanceId: this.id
+          });
+        });
+    },
+    push(path, data, index){                
+        var value = this.get(path);
+        if(!core.isArray(value)){
+            throw new Error(`${this.type.name} '${this.id}' cannot push to non Array at '${ path.join('.') }'`)
+        }
+        var newValue = [];
+        value.map((t, i) => {
+            if(i === index){ newValue.push(data); }
+            newValue.push(t);
+        });
+        if(core.isUndefined(index)){
+          newValue.push(data);
+        }
+        this._set(path, value, () => {
+          this.type.emit('update', { 
+            type: 'push', 
+            path,
+            data,
+            index,
+            instanceId: this.id
+          });
+        });
+    },
+    pop(path, items){
+        var value = this.get(path);
+        if(!core.isArray(value)){
+          throw new Error(`${this.type.name} '${this.id}' cannot pop from non Array at '${ path.join('.') }'`)
+        }
+        var type = core.typeOf(items);
+        var newValue = value.filter((t, i) => {
+          if(type === 'number'){ return i !== items; }  // items === index
+          if(type === 'array'){ return items.indexOf(t) === -1; }
+          return true;
+        });
+        this._set(path, newValue, () => {
+          this.type.emit('update', { 
+            type: 'pop', 
+            path,
+            items,
+            instanceId: this.id
+          });
+        });
     },
     watch(onChange){
         var watcher = new Watcher(this, onChange);
@@ -47,16 +181,17 @@ module.exports = function(core){
     unwatch(watcher){
         this._watchers.splice(this._watchers.indexOf(watcher), 1);
         return this;
-    },
+    },    
     kill(){
         this._watchers.map(watcher => {
           watcher.onChange(null);
           watcher.kill();
         });
         this.emit('kill', this);
+        this.off();
         return this;
     }
-  };
+  });
 
 
 
@@ -64,19 +199,20 @@ module.exports = function(core){
   function Type(definition){
     Object.assign(this, definition);
     this.instances = [];
+    core.Emitter(this);
   }
 
   Type.prototype = {
     find(query){
-      var type = typeof query;
-      var identifier = this.identifier;
+      var value, type = typeof query;
       return this.instances.find(function(instance){
         if(type === 'string'){
-          return instance[identifier] === query;
+          return instance.id === query;
         }
         if(type === 'object'){
+            value = instance.get();
             for(var key in query){
-              if(instance[key] !== query[key]){
+              if(value[key] !== query[key]){
                 return false;
               }
             }
@@ -96,25 +232,25 @@ module.exports = function(core){
           }
       }
       else{
-        instance = new Instance(this.name, id, value);
+        instance = new Instance(this, id, value);
         this.instances.push(instance);
       }
+      
       return instance;
     },
-    getSchema(){
-      var schema = this.schema || [];
-      if(this.extends){
-          schema = core.types[this.extends].getSchema().concat(schema);
+    create(meta, value){
+      var instance = this.find(meta);              
+      if(instance){
+          if(arguments.length > 1){
+              instance.set(value);
+          }
       }
-      return schema;
-    },
-    create(){
-        var result = { 'core.type': this.name };
-        this.getSchema().map(item => {
-            var type = core.types[item.type];
-            result[item.key] = type.getDefaultValue ? type.getDefaultValue() : type.create();
-        });
-        return result;
+      else{
+        instance = new Instance(this, meta, value);
+        this.instances.push(instance);
+      }
+      this.emit('create', instance);
+      return instance;
     }
   };
 
@@ -129,27 +265,44 @@ module.exports = function(core){
         description: 'The name of the type.',
         isRequired: true
       },{
-        key: 'identifier',
-        type: 'string',
-        description: 'The key used to identify instances of this type',
-        defaultValue: 'id'
-      },{
         key: 'schema',
         type: 'array',
-        params: { ofType: 'schemaItem' },
+        parameters: {
+          itemsType: 'schemaItem'
+        },
         description: 'A schema that defines the interface of this type',
         defaultValue: []
+      },{
+        key: 'description',
+        type: 'text',
+        description: 'Described the purpose of this type.',
+      },{
+        key: 'identifier',
+        type: 'schemaKey',
+        description: 'The field used to identify instances of this type',
+        defaultValue: 'id'
+      },{
+        key: 'displayField',
+        type: 'schemaKey',
+        description: 'The field used to display instances of this type',
+        defaultValue: 'key'
+      },{
+        key: 'descriptionField',
+        type: 'schemaKey',
+        description: 'The field used to display the description of instances of this type',
+        defaultValue: 'description'
+      },{
+        key: 'defaultValue',
+        type: 'any',
+        description: `The default value of this type. used by generic types to create new instances.`,
       },{
         key: 'build',
         type: 'function',
         description: `An async constructor for this type`,
-      },{
-        key: 'getDefaultValue',
-        type: 'function',
-        description: `An optional function to get the default value for this type.`,
       }
     ],
     build(definition, done){
+
       var core = this;
       var type = new Type(definition);
       // var type = definition;

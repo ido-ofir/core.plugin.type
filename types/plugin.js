@@ -39,11 +39,6 @@ module.exports = {
       description: 'a unique name for this plugin'
     },
     {
-      key: 'description',
-      type: 'string',
-      description: 'describes the purpose of this plugin'
-    },
-    {
       key: 'extend',
       type: 'object',
       description: 'extend the core object with your own properties'

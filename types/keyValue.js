@@ -1,18 +1,20 @@
 module.exports = {
   name: 'keyValue',
-  schema: {
-    key: {
+  displayField: 'key',
+  schema: [
+    {
+      key: 'key',
       type: 'string',
-      isRequired: true
+      isRequired: true,
+      defaultValue: 'key'
     },
-    value: {
-      type: 'any'
+    {
+      key: 'value',
+      type: 'any',
+      defaultValue: ''
     }
-  },
+  ],
   build(def){
     return def;
-  },
-  getDefaultValue(){
-    return { type: 'string', value: '' };
   }
 };

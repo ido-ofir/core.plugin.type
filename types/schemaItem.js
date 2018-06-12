@@ -2,6 +2,8 @@
 
 module.exports = {
   name: 'schemaItem',
+  identifier: 'key',
+  displayField: 'key',
   schema: [
     {
       key: 'key',
@@ -11,7 +13,7 @@ module.exports = {
       defaultValue: ''
     },{
       key: 'type',
-      type: 'type',
+      type: 'ref.type',
       description: 'the type of this property',
       isRequired: true,
       defaultValue: 'boolean'
@@ -19,7 +21,7 @@ module.exports = {
       key: 'description',
       type: 'string',
       description: 'the description of this property',
-      defaultValue: ''
+      defaultValue: 'no description'
     },{
       key: 'isRequired',
       type: 'boolean',
@@ -29,12 +31,12 @@ module.exports = {
       key: 'defaultValue',
       type: 'any',
       description: 'initial value for this property',
-      defaultValue: null
-    },{
-      key: 'params',
-      type: 'object',
-      description: 'a parameters data object for the selected type',
-      defaultValue: null
+      defaultValue: ''
+    // },{
+    //   key: 'parameters',
+    //   type: 'object',
+    //   description: 'a parameters data object for the selected type',
+    //   defaultValue: {}
     }
   ],
   build(def, done){

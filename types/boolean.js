@@ -1,21 +1,13 @@
 module.exports = {
   name: 'boolean',
   identifier: 'name',
+  displayField: 'name',
   schema: [
-    {
-      key: 'name',
-      type: 'string',
-      description: 'a unique name for this property'
-    },
-    {
-      key: 'description',
-      type: 'string',
-      description: 'describes the meaning of this property'
-    },
     {
       key: 'value',
       type: 'boolean',
-      description: 'the boolean value of this property'
+      description: 'the boolean value of this property',
+      defaultValue: true
     }
   ],
   validate(value, core){
@@ -24,7 +16,5 @@ module.exports = {
   build(def, done){
     done(Boolean(def && def.value));
   },
-  getDefaultValue(){
-    return true;
-  }
+  defaultValue: true
 };
