@@ -10,7 +10,7 @@ module.exports = {
   ],
   build(def, done){
     var core = this;
-    core.buildObject(def, function(built) {
+    core.type.buildObject(def, function(built) {
       done(built.items);
     });
   },

@@ -21,7 +21,7 @@ module.exports = {
 
         let core = this;
 
-        core.buildObject(def, (built) => {
+        core.type.buildObject(def, (built) => {
             console.log('def', def);
             done(def);
         });

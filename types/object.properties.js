@@ -11,7 +11,7 @@ module.exports = {
   ],
   build(object, done){
      var core = this;
-     core.buildObject(object, function(built){
+     core.type.buildObject(object, function(built){
        done(built.properties || {});
      });
   },

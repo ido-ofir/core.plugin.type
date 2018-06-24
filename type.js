@@ -60,7 +60,7 @@ module.exports = function(core){
     if(!core.isObject(meta)){ meta = { id: meta }; }
     this.meta = meta;
     this.id = meta.id;
-    this._value = value;
+    this.value = value;
     this._watchers = []; 
     this._events = {}; 
   }
@@ -69,43 +69,45 @@ module.exports = function(core){
     setMeta(meta){
       this.meta = Object.assign({}, this.meta, meta);
       this._runWatchers();
-      this._emitChange();
+      this._emit('meta', this);
+      this._emit('change', this);
     },
-    _emitChange(){
-      this.emit('change', this);
-      this.type.emit('instance.change', this);
+    _emit(eventName, data){
+      this.emit(eventName, data);
+      this.type.emit(`instance.${ eventName }`, data);
     },
     _runWatchers(){
-      this._watchers.map(watcher => watcher.onChange(this._value));
+      this._watchers.map(watcher => watcher.onChange(this.value));
     },
     _set(path, value, cb){
-        var prev = this._value;
-        this._value = setValue(this._value, path, value);
-        if(prev !== this._value){
+        var prev = this.value;
+        this.value = setValue(this.value, path, value);
+        if(prev !== this.value){
           this.previousValue = prev;
           this._runWatchers();
-          cb && cb(this._value);
-          this._emitChange();
+          cb && cb(this.value);
+          this._emit('change', this);
         }
         return this;
     },
     get(path){
         if(core.isString(path)){ path = [path]; }
-        return getValue(this._value, path);
+        return getValue(this.value, path);
     },
     
-    set(path, value){
+    set(path, value, descriptor){
       if(arguments.length < 2){
         value = path;
         path = [];
       }
       this._set(path, value, () => {
-        this.type.emit('update', {
+        var update = Object.assign({}, {
           instanceId: this.id,
           type: 'set', 
           value: value,
           path: path
-        }); 
+        }, descriptor);
+        this._emit('update', update);
       });
     },
     unset(path){

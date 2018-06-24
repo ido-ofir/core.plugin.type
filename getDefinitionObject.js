@@ -19,7 +19,7 @@ function getDefinitionObject(name, dependencies, get, type, done) {
     var meta = (typeof type === 'string') ? { type: type } : type;
     if (!name) throw new Error(`${meta.type} must have a name`);
     var definition;
-    if (this.isObject(name)) {
+    if (typeof name === 'object') {
       definition = name;
     } else {
       if (get) {
